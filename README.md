@@ -8,21 +8,8 @@ The application combines structured **Google News RSS** ingestion, sentiment cla
 
 ## 📸 Application Preview
 
-```
-+----------------------------------------------------------------------------------------------------+
-|  📈 Indian Stock Sentiment Analyser                                                                 |
-|  Analyze how news headlines for NSE Nifty 50 companies correlate with next-day price returns.       |
-|----------------------------------------------------------------------------------------------------|
-|  📊 Reliance Industries (RELIANCE.NS)                ₹1,279.00  -15.90 (-1.23%) Today               |
-|  NSE Ticker: RELIANCE.NS • Nifty 50 Index            🔒 Official Close • 09 Sep 2026               |
-|----------------------------------------------------------------------------------------------------|
-|  [ Pearson r: +0.2841 ]  [ Directional Accuracy: 66.7% ]  [ Non-Neutral: 6 / 12 ]  [ Headlines: 38 ]|
-|----------------------------------------------------------------------------------------------------|
-|  📈 Plotly Dual-Axis: Mean Sentiment Score (Bars) vs. Next-Day Price Return % (Line)               |
-|  📰 Filterable Headlines Table with FinBERT Sentiment Badges and Direct Article Links              |
-+----------------------------------------------------------------------------------------------------+
-```
-*(Place your application screenshot at `docs/screenshot.png`)*
+![App Screenshot](docs/screenshot.png)
+
 
 ---
 
