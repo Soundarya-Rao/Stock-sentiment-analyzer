@@ -1,0 +1,33 @@
+# Virtual Environment
+venv/
+env/
+.env
+.venv/
+ENV/
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Streamlit Local Config & Secrets
+.streamlit/secrets.toml
+
+# HuggingFace, PyTorch & Model Weights Caches
+.cache/
+models/
+*.bin
+*.pt
+*.pth
+*.safetensors
+hub/
+transformers_cache/
+
+# OS & Editor Metadata
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
