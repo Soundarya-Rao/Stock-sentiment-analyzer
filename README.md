@@ -8,7 +8,8 @@ The application combines structured **Google News RSS** ingestion, sentiment cla
 
 ## 📸 Application Preview
 
-![App Screenshot](docs/screenshot.png)
+![Dashboard: sentiment vs next-day return chart](docs/screenshot-1.png)
+![Dashboard: headlines table and daily merged data](docs/screenshot-2.png)
 
 
 ---
