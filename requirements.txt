@@ -13,6 +13,7 @@ feedparser==6.0.14
 feedparser-sgmllib==2.1.0
 filelock==3.32.5
 fsspec==2026.7.0
+google-cloud-bigquery==3.45.2
 h11==0.16.0
 hf-xet==1.6.0
 httpcore==1.0.9

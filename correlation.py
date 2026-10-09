@@ -28,6 +28,14 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
+def save_to_bigquery(df, table_id="stock_data.sentiment_returns"):
+    from google.cloud import bigquery
+    client = bigquery.Client()
+    job = client.load_table_from_dataframe(df, table_id)
+    job.result()  # waits for it to finish
+    print(f"Saved {len(df)} rows to {table_id}")
+
+
 # Ensure UTF-8 output encoding for Windows terminals
 if sys.stdout and hasattr(sys.stdout, "reconfigure"):
     try:
@@ -261,3 +269,4 @@ if __name__ == "__main__":
         ["date", "mean_sentiment", "pct_change", "next_day_pct_change", "headline_count", "direction_match"]
     ]
     print(merged_preview.head(10).to_string(index=False))
+

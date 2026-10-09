@@ -151,6 +151,8 @@ python correlation.py
 ```
 Stock Analysis/
 ├── app.py               # Streamlit web application & Plotly visualizations
+├── backfill_bigquery.py # Batch backfill script to populate BigQuery with historical stock data
+├── bigquery_ml.sql      # SQL script for BigQuery ML data transformation, modeling, and evaluation
 ├── correlation.py       # Alignment, -1 day shift, Pearson r, and directional accuracy
 ├── news_fetcher.py      # Google News RSS ingestion and parsing
 ├── price_fetcher.py     # yfinance historical prices, market-close validation, price summary
@@ -173,3 +175,29 @@ Stock Analysis/
    `ProsusAI/finbert` was trained primarily on global financial English (SEC filings, international financial journals). It may occasionally miss Indian corporate idioms, regional business vernacular, or domestic regulatory shorthand (e.g., *NCLT*, *SEBI order*, *promoter pledge*).
 5. **Exploratory Baseline, Not an Execution Strategy:**
    This tool is intended as an exploratory analytical baseline for feature engineering and hypothesis testing. It does not account for transaction slippage, bid-ask spreads, STT (Securities Transaction Tax), brokerage costs, or liquidity constraints.
+
+---
+
+## 🔮 BigQuery ML Extension (optional)
+
+### Setup
+1. **Create BigQuery Dataset:** In Google Cloud Console, create a dataset named `stock_data`.
+2. **Service Account:** Create a GCP service account with BigQuery Data Editor and Job User permissions, download the JSON key, and set the environment variable:
+   ```bash
+   export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
+   # On Windows (PowerShell):
+   $env:GOOGLE_APPLICATION_CREDENTIALS="C:\path\to\service-account.json"
+   ```
+3. **Backfill Historical Data:** Run the backfill script:
+   ```bash
+   python backfill_bigquery.py
+   ```
+4. **Run SQL in BigQuery Console:** Execute the statements in [`bigquery_ml.sql`](bigquery_ml.sql) directly in the BigQuery console.
+
+> **Note:** The Streamlit dashboard (`app.py`) works entirely independently without any of this BigQuery setup or execution.
+
+### Results
+* **Dataset Scope:** 49 Nifty 50 stocks, yielding 665 labelled stock-days.
+* **Logistic Regression:** Achieved an **ROC AUC of 0.51** and an accuracy of **55.6%** (using the default BigQuery ML data split). Note that a baseline always predicting "down" scores approximately 58% on this dataset.
+* **Boosted Tree Classifier:** An earlier boosted-tree run on a smaller table scored an **ROC AUC of 0.48** and was not re-run on the full table.
+* **Conclusion:** Near-chance, a small-sample negative result — no reliable signal was found in this small sample.

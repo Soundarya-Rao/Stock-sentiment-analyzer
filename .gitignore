@@ -31,3 +31,7 @@ transformers_cache/
 .DS_Store
 Thumbs.db
 *.log
+
+# Google Cloud Service Account Key
+top-cubist-509517-f8-7a123d48b8b5.json
+*.json
