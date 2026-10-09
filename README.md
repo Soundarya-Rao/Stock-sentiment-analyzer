@@ -13,42 +13,6 @@ The application combines structured **Google News RSS** ingestion, sentiment cla
 
 ---
 
-## 🎯 Interview Talking Points & Design Choices
-
-This project was built with production-grade data engineering and statistical rigor rather than as a superficial wrapper. Below are the key architectural decisions and engineering rationales:
-
-### 1. Google News RSS vs. Direct Web Scraping
-* **Anti-Scraping Resistance:** Top Indian financial portals (*Moneycontrol*, *The Economic Times*, *Mint*, *Business Standard*) employ aggressive Cloudflare protections, dynamic JavaScript hydration, CAPTCHAs, and frequently changing DOM structures. Direct scraping is brittle and violates Terms of Service.
-* **Structured XML Protocol:** Google News provides a standardized, reliable XML RSS feed (`news.google.com/rss/search`) parameterized for the Indian financial market (`hl=en-IN&gl=IN&ceid=IN:IN`). It guarantees clean metadata (title, publication timestamp, source publisher, and canonical URL) with low latency and zero headless browser overhead.
-
-### 2. FinBERT vs. Generic Sentiment Models (VADER / Standard BERT)
-* **Domain-Specific Vocabulary:** Standard NLP models fail on financial terminology. Words like `"risk"`, `"liability"`, `"hedging"`, `"drag"`, or `"plunge"` are interpreted as negative in colloquial English, whereas in financial statements and corporate news they are standard descriptive terms.
-* **Trained on Financial Corpora:** `ProsusAI/finbert` was fine-tuned on the Financial PhraseBank dataset, enabling calibrated classification into positive, negative, and neutral categories.
-* **Continuous Signed Metric:** We map FinBERT's discrete class probabilities into a continuous signed score:
-  $$\text{Score} = \begin{cases} +\text{confidence}, & \text{if label is Positive} \\ -\text{confidence}, & \text{if label is Negative} \\ 0.0, & \text{if label is Neutral} \end{cases}$$
-
-### 3. The -1 Day Return Shift (Eliminating Lookahead Bias)
-* **Direction of Causality:** Markets react to news *after* it is published. Aligning day $t$ sentiment with day $t$ return creates simultaneous lookahead bias — an afternoon intraday price drop often triggers negative evening headlines, which falsely inflates same-day correlation.
-* **Predictive Signal Testing:** Shifting price returns by $-1$ day aligns day $t$ accumulated sentiment with day $t+1$ close-to-close return:
-  $$\text{Next-Day Return}_t = \frac{\text{Close}_{t+1} - \text{Close}_t}{\text{Close}_t} \times 100\%$$
-  This tests whether sentiment has an actual **leading, predictive relationship** with market movement.
-
-### 4. Directional Accuracy & Active Non-Neutral Day Counts
-* **Pearson Correlation ($r$):** Measures linear co-movement across all days, including subtle fractional price shifts.
-* **Directional Accuracy (%):** Measures how often the sign of sentiment matched the sign of the next day's price move:
-  $$\text{Directional Match} = (\text{Mean Sentiment}_t \times \text{Next-Day Return}_t) > 0$$
-* **Statistical Honesty:** A directional accuracy of 80% evaluated over only 3 active days is statistical noise. We explicitly filter out neutral days ($|\text{sentiment}| < 0.05$) and report the exact count of active days (e.g. *"4 of 6 active days"*) to prevent deceptive percentage inflation.
-
-### 5. Intraday vs. Official Closing Prices
-* **The Problem:** During market hours, `yfinance` returns the live Last Traded Price (LTP) in the `Close` column. Treating an unfinalized session as a completed close causes premature next-day return calculations against an incomplete day.
-* **The Solution:** The `is_market_closed_for_date()` guard evaluates the exchange timezone (`Asia/Kolkata`):
-  * Prior days ($\text{date} < \text{today}$) are marked **Closed**.
-  * Today ($\text{date} == \text{today}$) is **In Progress** until 15:30 IST.
-  * Incomplete intraday rows are excluded from return and correlation calculations. Yesterday's row displays `NaN` for Next-Day Return until today's session officially settles.
-  * The top of the dashboard displays a prominent live price card distinguishing `Live Market (In Progress)` from `Official Close`.
-
----
-
 ## 🏗️ Architecture Overview
 
 The pipeline follows a modular, decoupled architecture where each layer can be tested and executed independently:
@@ -90,6 +54,42 @@ flowchart TD
 | [`sentiment.py`](sentiment.py) | Runs HuggingFace FinBERT pipeline and produces signed continuous scores | `score_sentiment()`, `aggregate_daily_sentiment()` |
 | [`correlation.py`](correlation.py) | Rolls weekend news, shifts returns by -1 day, computes Pearson $r$ and directional match | `correlate_sentiment_and_returns()`, `roll_to_next_trading_day()` |
 | [`app.py`](app.py) | Streamlit web application with caching, dual-axis Plotly charts, and all 50 Nifty constituents | `st.set_page_config`, `@st.cache_data`, `@st.cache_resource` |
+
+---
+
+## Design Decisions
+
+Key architectural decisions and the reasoning behind them:
+
+### 1. Google News RSS vs. Direct Web Scraping
+* **Anti-Scraping Resistance:** Top Indian financial portals (*Moneycontrol*, *The Economic Times*, *Mint*, *Business Standard*) employ aggressive Cloudflare protections, dynamic JavaScript hydration, CAPTCHAs, and frequently changing DOM structures. Direct scraping is brittle and violates Terms of Service.
+* **Structured XML Protocol:** Google News provides a standardized, reliable XML RSS feed (`news.google.com/rss/search`) parameterized for the Indian financial market (`hl=en-IN&gl=IN&ceid=IN:IN`). It guarantees clean metadata (title, publication timestamp, source publisher, and canonical URL) with low latency and zero headless browser overhead.
+
+### 2. FinBERT vs. Generic Sentiment Models (VADER / Standard BERT)
+* **Domain-Specific Vocabulary:** Standard NLP models fail on financial terminology. Words like `"risk"`, `"liability"`, `"hedging"`, `"drag"`, or `"plunge"` are interpreted as negative in colloquial English, whereas in financial statements and corporate news they are standard descriptive terms.
+* **Trained on Financial Corpora:** `ProsusAI/finbert` was fine-tuned on the Financial PhraseBank dataset, enabling calibrated classification into positive, negative, and neutral categories.
+* **Continuous Signed Metric:** We map FinBERT's discrete class probabilities into a continuous signed score:
+  $$\text{Score} = \begin{cases} +\text{confidence}, & \text{if label is Positive} \\ -\text{confidence}, & \text{if label is Negative} \\ 0.0, & \text{if label is Neutral} \end{cases}$$
+
+### 3. The -1 Day Return Shift (Eliminating Lookahead Bias)
+* **Direction of Causality:** Markets react to news *after* it is published. Aligning day $t$ sentiment with day $t$ return creates simultaneous lookahead bias — an afternoon intraday price drop often triggers negative evening headlines, which falsely inflates same-day correlation.
+* **Predictive Signal Testing:** Shifting price returns by $-1$ day aligns day $t$ accumulated sentiment with day $t+1$ close-to-close return:
+  $$\text{Next-Day Return}_t = \frac{\text{Close}_{t+1} - \text{Close}_t}{\text{Close}_t} \times 100\%$$
+  This tests whether sentiment has an actual **leading, predictive relationship** with market movement.
+
+### 4. Directional Accuracy & Active Non-Neutral Day Counts
+* **Pearson Correlation ($r$):** Measures linear co-movement across all days, including subtle fractional price shifts.
+* **Directional Accuracy (%):** Measures how often the sign of sentiment matched the sign of the next day's price move:
+  $$\text{Directional Match} = (\text{Mean Sentiment}_t \times \text{Next-Day Return}_t) > 0$$
+* **Statistical Honesty:** A directional accuracy of 80% evaluated over only 3 active days is statistical noise. We explicitly filter out neutral days ($|\text{sentiment}| < 0.05$) and report the exact count of active days (e.g. *"4 of 6 active days"*) to prevent deceptive percentage inflation.
+
+### 5. Intraday vs. Official Closing Prices
+* **The Problem:** During market hours, `yfinance` returns the live Last Traded Price (LTP) in the `Close` column. Treating an unfinalized session as a completed close causes premature next-day return calculations against an incomplete day.
+* **The Solution:** The `is_market_closed_for_date()` guard evaluates the exchange timezone (`Asia/Kolkata`):
+  * Prior days ($\text{date} < \text{today}$) are marked **Closed**.
+  * Today ($\text{date} == \text{today}$) is **In Progress** until 15:30 IST.
+  * Incomplete intraday rows are excluded from return and correlation calculations. Yesterday's row displays `NaN` for Next-Day Return until today's session officially settles.
+  * The top of the dashboard displays a prominent live price card distinguishing `Live Market (In Progress)` from `Official Close`.
 
 ---
 
@@ -197,7 +197,7 @@ Stock Analysis/
 > **Note:** The Streamlit dashboard (`app.py`) works entirely independently without any of this BigQuery setup or execution.
 
 ### Results
-* **Dataset Scope:** 49 Nifty 50 stocks, yielding 665 labelled stock-days.
+* **Dataset Scope:** 49 large-cap NSE stocks (46 of them are in the dashboard's Nifty 50 list; the backfill script uses its own ticker list), yielding 665 labelled stock-days.
 * **Logistic Regression:** Achieved an **ROC AUC of 0.51** and an accuracy of **55.6%** (using the default BigQuery ML data split). Note that a baseline always predicting "down" scores approximately 58% on this dataset.
 * **Boosted Tree Classifier:** An earlier boosted-tree run on a smaller table scored an **ROC AUC of 0.48** and was not re-run on the full table.
 * **Conclusion:** Near-chance, a small-sample negative result — no reliable signal was found in this small sample.
